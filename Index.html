@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fokus</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            font-family: 'Arial Black', Arial, sans-serif;
+            background-color: #3498db; /* Azul */
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        h1 {
+            font-size: 3em;
+        }
+
+        .timer {
+            font-size: 2em;
+            margin: 20px 0;
+        }
+
+        button {
+            font-size: 1.5em;
+            padding: 10px;
+            margin: 5px;
+            cursor: pointer;
+            background-color: #2c3e50; /* Gris oscuro */
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+
+        button:disabled {
+            background-color: #7f8c8d; /* Gris */
+            cursor: not-allowed;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px;
+            margin: 0 10px;
+            cursor: pointer;
+            background-color: #2c3e50; /* Gris oscuro */
+            border: none;
+            border-radius: 5px;
+        }
+
+        .tab:active,
+        .tab:focus {
+            background-color: #34495e; /* Gris más oscuro al activar/focusear */
+        }
+
+        .habitats {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .habitats > div {
+            display: none;
+        }
+
+        .habitats.active {
+            display: flex;
+        }
+
+        .start-btn,
+        .pause-btn,
+        .resume-btn,
+        .restart-btn {
+            display: none;
+        }
+
+        /* Estilo específico para el temporizador enfoque */
+        #enfoque-timer {
+            font-size: 2em;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <h1 class="app-title">Fokus</h1>
+
+
+    <!-- Pestañas -->
+    <div class="tabs">
+        <button class="tab" data-habitat="enfoque">Enfoque</button>
+        <button class="tab" data-habitat="descanso-corto">Descanso Corto</button>
+        <button class="tab" data-habitat="descanso-largo">Descanso Largo</button>
+    </div>
+
+     <!-- Contenido de hábitats -->
+     <div class="habitats">
+        <!-- Enfoque -->
+        <div id="enfoque" class="card habitats-container">
+            <div class="timer-container">
+                <div id="enfoque-timer" class="timer">25:00</div>
+                <div class="button-container">
+                    <button id="start-enfoque" class="start-btn">Iniciar</button>
+                    <button id="pause-enfoque" class="pause-btn">Pausar</button>
+                    <button id="resume-enfoque" class="resume-btn">Reanudar</button>
+                    <button id="restart-enfoque" class="restart-btn">Reiniciar</button>
+                </div>
+            </div>
+        </div>
+
+         <!-- Descanso Corto -->
+         <div id="descanso-corto" class="card habitats-container">
+            <div class="timer-container">
+                <div id="descanso-corto-timer" class="timer">05:00</div>
+                <div class="button-container">
+                    <button id="start-descanso-corto" class="start-btn">Iniciar</button>
+                    <button id="pause-descanso-corto" class="pause-btn">Pausar</button>
+                    <button id="resume-descanso-corto" class="resume-btn">Reanudar</button>
+                    <button id="restart-descanso-corto" class="restart-btn">Reiniciar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Descanso Largo -->
+        <div id="descanso-largo" class="card habitats-container">
+            <div class="timer-container">
+                <div id="descanso-largo-timer" class="timer">15:00</div>
+                <div class="button-container">
+                    <button id="start-descanso-largo" class="start-btn">Iniciar</button>
+                    <button id="pause-descanso-largo" class="pause-btn">Pausar</button>
+                    <button id="resume-descanso-largo" class="resume-btn">Reanudar</button>
+                    <button id="restart-descanso-largo" class="restart-btn">Reiniciar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+        
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const tabs = document.querySelectorAll('.tab');
+            const habitats = document.querySelector('.habitats');
+            let pauseTimeRemaining = 0;
+            let currentInterval;
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function () {
+                    const habitat = this.dataset.habitat;
+                    showHabitat(habitat);
+                });
+            });
+
+            function showHabitat(habitat) {
+                const habitats = document.querySelectorAll('.habitats > div');
+                habitats.forEach((element) => {
+                    element.style.display = 'none';
+                });
+
+                const activeHabitat = document.getElementById(habitat);
+                activeHabitat.style.display = 'flex';
+
+                // Mostrar los botones al seleccionar un hábitat
+                const startBtn = document.querySelector('.start-btn');
+                const pauseBtn = document.querySelector('.pause-btn');
+                const resumeBtn = document.querySelector('.resume-btn');
+                const restartBtn = document.querySelector('.restart-btn');
+
+                startBtn.style.display = 'block';
+                pauseBtn.style.display = 'none';
+                resumeBtn.style.display = 'none';
+                restartBtn.style.display = 'block';
+
+                // Detener el temporizador actual si existe
+                if (currentInterval) {
+                    clearInterval(currentInterval);
+                }
+
+                // Reanudar el temporizador o iniciar uno nuevo
+                const minutesSeconds = activeHabitat.textContent.split(':');
+                const minutes = parseInt(minutesSeconds[0], 10);
+                const seconds = parseInt(minutesSeconds[1], 10);
+
+                if (pauseTimeRemaining > 0) {
+                    showPauseButton();
+                    startTimer(pauseTimeRemaining, activeHabitat);
+                } else {
+                    showStartButton();
+                    startTimer(minutes * 60 + seconds, activeHabitat);
+                }
+            }
+
+            function showStartButton() {
+                const startBtn = document.querySelector('.start-btn');
+                const pauseBtn = document.querySelector('.pause-btn');
+                const resumeBtn = document.querySelector('.resume-btn');
+                const restartBtn = document.querySelector('.restart-btn');
+
+                startBtn.style.display = 'block';
+                pauseBtn.style.display = 'none';
+                resumeBtn.style.display = 'none';
+                restartBtn.style.display = 'block';
+            }
+
+            function showPauseButton() {
+                const startBtn = document.querySelector('.start-btn');
+                const pauseBtn = document.querySelector('.pause-btn');
+                const resumeBtn = document.querySelector('.resume-btn');
+                const restartBtn = document.querySelector('.restart-btn');
+
+                startBtn.style.display = 'none';
+                pauseBtn.style.display = 'block';
+                resumeBtn.style.display = 'none';
+                restartBtn.style.display = 'block';
+            }
+
+            function showResumeButton() {
+                const startBtn = document.querySelector('.start-btn');
+                const pauseBtn = document.querySelector('.pause-btn');
+                const resumeBtn = document.querySelector('.resume-btn');
+                const restartBtn = document.querySelector('.restart-btn');
+
+                startBtn.style.display = 'none';
+                pauseBtn.style.display = 'none';
+                resumeBtn.style.display = 'block';
+                restartBtn.style.display = 'block';
+            }
+
+            function showRestartButton(startBtn, pauseBtn, resumeBtn, restartBtn) {}
+                startBtn.style.display = 'block';
+                pauseBtn.style.display = 'none';
+                resumeBtn.style.display = 'none';
+                restartBtn.style.display = 'block';
+            
+
+            // Función para iniciar o pausar el temporizador
+            function toggleTimer(duration, display, startBtn, pauseBtn, resumeBtn, restartBtn) {
+                let timer = duration, minutes, seconds;
+                display.style.fontSize = '2em'; // Ajusta el tamaño de fuente según sea necesario
+
+                
+                //Mostrar botones al iniciar
+                showPauseButton(pauseBtn, resumeBtn, restartBtn);
+
+                currentInterval = setInterval(function () {
+                    minutes = parseInt(timer / 60, 10);
+                    seconds = parseInt(timer % 60, 10);
+
+                    minutes = minutes < 10 ? "0" + minutes : minutes;
+                    seconds = seconds < 10 ? "0" + seconds : seconds;
+
+                    display.textContent = minutes + ":" + seconds;
+
+                    if (--timer < 0) {
+                        clearInterval(currentInterval);
+                        showRestartButton(startBtn, pauseBtn, resumeBtn, restartBtn);
+                        enableButtons();
+                        display.style.fontSize = '2em';
+                    }
+                }, 1000);
+
+                return currentInterval;
+            }
+
+            // Enfoque
+            const enfoqueTimer = document.getElementById('enfoque');
+            const startEnfoqueBtn = document.getElementById('start-enfoque');
+            const pauseEnfoqueBtn = document.getElementById('pause-enfoque');
+            const resumeEnfoqueBtn = document.getElementById('resume-enfoque');
+            const restartEnfoqueBtn = document.getElementById('restart-enfoque');
+
+            startEnfoqueBtn.addEventListener('click', function () {
+                const button = this;
+                toggleTimer(25 * 60, enfoqueTimer, startEnfoqueBtn, pauseEnfoqueBtn, resumeEnfoqueBtn, restartEnfoqueBtn);
+            });
+
+            pauseEnfoqueBtn.addEventListener('click', function () {
+                const button = this;
+                button.style.display = 'none';
+                showResumeButton();
+                clearInterval(currentInterval);
+                pauseTimeRemaining = getTimeInSeconds(enfoqueTimer);
+            });
+
+            resumeEnfoqueBtn.addEventListener('click', function () {
+                const button = this;
+                button.style.display = 'none';
+                showPauseButton();
+                toggleTimer(pauseTimeRemaining, enfoqueTimer);
+            });
+
+            restartEnfoqueBtn.addEventListener('click', function () {
+                const button = this;
+                showStartButton();
+                clearInterval(currentInterval);
+                enfoqueTimer.textContent = '25:00';
+                enableButtons();
+            });
+
+            // Función para mostrar los botones de pausa, reanudar y reiniciar
+            function showPauseButton(pauseBtn, resumeBtn, restartBtn) {
+                pauseBtn.style.display = 'block';
+                resumeBtn.style.display = 'none';
+                restartBtn.style.display = 'block';
+            }
+
+            function showResumeButton() {
+                const pauseBtn = document.querySelector('.pause-btn');
+                const resumeBtn = document.querySelector('.resume-btn');
+                const restartBtn = document.querySelector('.restart-btn');
+
+                pauseBtn.style.display = 'none';
+                resumeBtn.style.display = 'block';
+                restartBtn.style.display = 'block';
+            }
+            function showRestartButton(){
+                const pauseBtn = document.querySelector('.pause-btn');
+                const resumeBtn = document.querySelector('.resume-btn');
+                const restartBtn = document.querySelector('.restart-btn');
+            
+                pauseBtn.style.display = 'none';
+                resumeBtn.style.display = 'none';
+                restartBtn.style.display = 'block';
+            }
+            // Función para obtener el tiempo en segundos desde el temporizador en formato MM:SS
+            function getTimeInSeconds(timerDisplay) {
+                const minutesSeconds = timerDisplay.textContent.split(':');
+                const minutes = parseInt(minutesSeconds[0], 10);
+                const seconds = parseInt(minutesSeconds[1], 10);
+                return minutes * 60 + seconds;
+            }
+
+            function enableButtons() {
+                const startBtn = document.querySelector('.start-btn');
+                const pauseBtn = document.querySelector('.pause-btn');
+                const resumeBtn = document.querySelector('.resume-btn');
+                const restartBtn = document.querySelector('.restart-btn');
+
+                startBtn.removeAttribute('disabled');
+                pauseBtn.removeAttribute('disabled');
+                resumeBtn.removeAttribute('disabled');
+                restartBtn.removeAttribute('disabled');
+            }
+        });
+    </script>
+    <script src="script.js"></script>
+</body>
+</html>
